@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- Service worker now appends a version query to its network fetches so a CDN/edge cache (e.g. Cloudflare) serves fresh CSS/JS after a deploy instead of stale assets.
 - Google Calendar sync no longer adds a phantom extra day to all-day multi-day events, and multi-day repeating events now sync without the `Invalid recurrence rule` error. Outbound all-day events now use Google's exclusive end date, and recurrence rules are sent with the required `RRULE:` prefix and a value type that matches the event (date vs. date-time).
 
 ## [0.57.4] - 2026-06-02

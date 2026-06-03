@@ -252,7 +252,11 @@ async function networkFirst(request, cacheName) {
   const cache = await caches.open(cacheName);
 
   try {
-    const response = await fetch(request);
+    // Fetch from network with a version-busting query so a CDN/edge cache
+    // (e.g. Cloudflare) can't serve a stale CSS/JS after a deploy. The cache
+    // entry is still keyed by the ORIGINAL request, so offline cache-first
+    // lookups keep working.
+    const response = await fetch(bustCdn(request));
     if (response.ok && response.type === 'basic') {
       cache.put(request, response.clone());
     }
@@ -296,6 +300,23 @@ async function cacheFirst(request, cacheName) {
 // --------------------------------------------------------
 function isAsset(pathname) {
   return /\.(png|jpg|jpeg|ico|svg|webp|woff2?|gif)$/i.test(pathname);
+}
+
+// Append the shell cache version as a query string to same-origin CSS/JS/JSON
+// network fetches. A CDN/edge cache (Cloudflare) keys on the full URL, so a new
+// version after a deploy is a cache MISS -> fresh from origin. The query bumps
+// only when SHELL_CACHE changes (i.e. per release), so steady-state caching is
+// unaffected. Navigations are left untouched (new Request can't clone mode:navigate).
+function bustCdn(request) {
+  try {
+    const url = new URL(request.url);
+    if (url.origin === self.location.origin && request.method === 'GET' &&
+        request.mode !== 'navigate' && /\.(css|js|json)$/i.test(url.pathname)) {
+      url.searchParams.set('swv', SHELL_CACHE);
+      return new Request(url.toString(), request);
+    }
+  } catch { /* fall through to original request */ }
+  return request;
 }
 
 function isMutableAppResource(pathname) {
